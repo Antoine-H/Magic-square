@@ -31,7 +31,7 @@ let create_square n =
 
 (* Transposes a matrix *)
 
-let rec transpose ls = match ls with
+let rec transpose = function
   | []             -> []
   | []   :: xss    -> transpose xss
   | (x::xs) :: xss ->
@@ -68,18 +68,6 @@ let get_adiago ls =
   in get_diag ls ((List.length ls)-1)
 
 let check_diags ls n =
-  let get_diago ls =
-    let rec get_diag ls i = match ls with
-      | []      -> []
-      | l :: ls -> List.nth l i :: get_diag ls (i+1)
-    in get_diag ls 0
-  in
-  let get_adiago ls =
-    let rec get_diag ls i = match ls with
-      | []      -> []
-      | l :: ls -> List.nth l i :: get_diag ls (i-1)
-    in get_diag ls ((List.length ls)-1)
-  in
      check_line (get_diago ls) n
   && check_line (get_adiago ls) n
 
@@ -112,7 +100,7 @@ let is_magic c =
    that is |sum line - n|*)
 
 let distance_lines c =
-  let rec sum_lines c = match c with
+  let rec sum_lines = function
     | []      -> []
     | l :: ls -> sum_line l :: sum_lines ls in
   List.fold_left (+) 0 (sum_lines c)
@@ -131,7 +119,7 @@ let distances c =
   distance_lines c + distance_cols c + distance_diago c + distance_adiago c
 
 (* A neighbour is a matrix that got either a line or a column permuted.
-   This must not be enough since we are looping. *)
+   TODO This must not be enough since we are looping. *)
 
 let neighbours c =
  let rm x l = List.filter ((<>) x) l in
@@ -143,6 +131,39 @@ let neighbours c =
         [] l
   in permutations (transpose c) @ permutations c
 
+(* Second attempt at neighbours. A neighbour is a matrix on which a line/column
+   has been shifted one spot (cyclic). Rubik's cube way*)
+
+let flipper = fun thelist ->
+  let r = List.rev thelist
+  in (List.hd r) :: (List.rev (List.tl r))
+
+let rec flipper_n c n = match n with
+  | 0 -> begin match c with
+    | [] -> []
+    | l :: ls -> [(flipper l)] @ ls
+    end
+  | _ -> match c with
+    | [] -> []
+    | l :: ls -> l :: (flipper_n ls (n-1))
+
+let rec flipper_square c =
+  let n = List.length c in
+  let rec fs c n = match n with
+    | 0  -> []
+    | _  -> (flipper_n c (n-1)) :: fs c (n-1) in
+  fs c n
+
+let neighbours2 (c: int list list) =
+  (flipper_square c) @ (flipper_square (transpose c))
+
+(* Select the neighbour that is the closest to a solution.
+   Chooses at random if multiple candidates. *)
+
+let randomelement cs =
+  let n = Random.int (List.length cs) in
+  List.nth cs n
+
 let rec min cs =
   let rec min_carre cs k = match cs with
     | []      -> k
@@ -153,11 +174,29 @@ let rec min cs =
         min_carre cs k
   in min_carre cs (List.hd cs)
 
+let rec all_min cs =
+  let m = min cs in
+  let rec all_m cs m = match cs with
+  | [] -> []
+  | c :: cs ->
+    if (distances c) = (distances m) then
+      c :: (all_m cs m)
+    else
+      all_m cs m
+  in all_m cs m
+
+let mini cs = randomelement (all_min cs)
+
+(* solver *)
+
 let rec solve c =
   if is_magic c then
     print c
   else
-    let n = neighbours c in
-    let m = min n in
+    let n = (neighbours2 c) @ (neighbours c) in
+    let m = mini n in
+    (*let m = randomelement n in*)
+    print m; print_endline "------------";
+    print_int (distances m); print_endline ""; print_endline "------------";
     solve m
 
