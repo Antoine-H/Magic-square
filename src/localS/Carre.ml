@@ -123,12 +123,6 @@ let distance_diago c = sum_line (get_diago c)
 
 let distance_adiago c = sum_line (get_adiago c)
 
-let print_dist c =
-  print_int (distance_lines c); print_endline "";
-  print_int (distance_cols c); print_endline "";
-  print_int (distance_diago c); print_endline "";
-  print_int (distance_adiago c); print_endline ""
-
 let print c =
   let print_line l = List.iter (Printf.printf "%d ") l in
   List.iter (fun l -> print_line l; print_endline "") c
