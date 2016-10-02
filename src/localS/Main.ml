@@ -10,10 +10,13 @@ let rec printc = function
     printc cs
 
 let main =
-  let n = int_of_string(Sys.argv.(1)) in
-  let carre = create_square n in
-  Printf.printf "%B distance %d\n" (is_magic carre) (distances carre);
-  print carre;
-  print_endline "";
-  solve carre
+  if Array.length Sys.argv <> 2 then
+    prerr_endline ("Usage: " ^ Sys.argv.(0) ^ " <Size of square>")
+  else
+    let n = int_of_string(Sys.argv.(1)) in
+    let carre = create_square n in
+    Printf.printf "%B distance %d\n" (is_magic carre) (distances carre);
+    print carre;
+    print_endline "";
+    solve carre
 
