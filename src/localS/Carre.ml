@@ -157,7 +157,7 @@ let rec min cs =
         min_carre cs c
       else
         min_carre cs k
-  in min_carre cs [[100;100;100];[100;100;100];[100;100;100]]
+  in min_carre cs (List.hd cs)
 
 let rec solve c =
   if is_magic c then
