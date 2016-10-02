@@ -1,0 +1,11 @@
+# structure of my awesome project
+S src
+S src/localS
+S src/complete
+
+B _build/src
+B _build/src/localS
+B _build/src/complete
+
+PKG batteries
+PKG facile
