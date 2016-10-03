@@ -1,4 +1,3 @@
-# structure of my awesome project
 S src
 S src/local
 S src/complete
@@ -8,4 +7,3 @@ B _build/src/local
 B _build/src/complete
 
 PKG batteries
-PKG facile
