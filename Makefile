@@ -1,5 +1,5 @@
 localS:
-	ocamlbuild -use-ocamlfind src/localS/Main.native
+	ocamlbuild -use-ocamlfind src/local/Main.native
 
 complete:
 	ocamlbuild -use-ocamlfind src/complete/Complete.native
