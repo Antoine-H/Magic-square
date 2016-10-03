@@ -1,11 +1,12 @@
-open Carre
+open Search
+open Matrix
 
 let rec printc = function
   | [] -> print []
   | c :: cs ->
     print c;
     print_endline "";
-    print_int (distances c);
+    print_int (cost c);
     print_endline "";
     printc cs
 
@@ -15,7 +16,7 @@ let main =
   else
     let n = int_of_string(Sys.argv.(1)) in
     let carre = create_square n in
-    Printf.printf "%B distance %d\n" (is_magic carre) (distances carre);
+    Printf.printf "%B distance %d\n" (is_magic carre) (cost carre);
     print carre;
     print_endline "";
     solve carre

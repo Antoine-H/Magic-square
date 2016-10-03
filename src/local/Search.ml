@@ -3,10 +3,12 @@
    they range from 1 to n²) *)
 
 open Batteries
+open Matrix
 
 (* Create a matrix of n*n with all elements in [1,n²] *)
 
 let create_square n =
+  Random.self_init ();
   let shuffle d =
     let nd = List.map (fun c -> (Random.bits (), c)) d in
     let sond = List.sort compare nd in
@@ -18,24 +20,7 @@ let create_square n =
   in
   let shuffle_line n = shuffle (populate_line n [])
   in
-  let split xs size =
-    let (_, r, rs) =
-      List.fold_left (fun (csize, ys, zss) elt ->
-          if csize = 0 then (size - 1, [elt], zss @ [ys])
-          else (csize - 1, ys @ [elt], zss))
-               (size, [], []) xs
-    in
-    rs @ [r]
-  in
   split (shuffle_line (n*n)) n
-
-(* Transposes a matrix *)
-
-let rec transpose = function
-  | []             -> []
-  | []   :: xss    -> transpose xss
-  | (x::xs) :: xss ->
-    (x :: List.map List.hd xss) :: transpose (xs :: List.map List.tl xss)
 
 (* Check line constraint : the elements of a line must sum up to n *)
 
@@ -55,18 +40,6 @@ let check_cols ls n = check_lines (transpose ls) n
 (* The elements of both diagonals must also sum up to n.
    Computes the diagonal then uses the line constraint. *)
 
-let get_diago ls =
-  let rec get_diag ls i = match ls with
-    | []      -> []
-    | l :: ls -> List.nth l i :: get_diag ls (i+1)
-  in get_diag ls 0
-
-let get_adiago ls =
-  let rec get_diag ls i = match ls with
-    | []      -> []
-    | l :: ls -> List.nth l i :: get_diag ls (i-1)
-  in get_diag ls ((List.length ls)-1)
-
 let check_diags ls n =
      check_line (get_diago ls) n
   && check_line (get_adiago ls) n
@@ -79,124 +52,159 @@ let all_diff c = (List.length (List.flatten c))
 (* In a magic square of size n, the elements of a line must sum up to
    (n^3+n)/2. *)
 
-let get_sum c =
+let magic_constant c =
   let k = List.length c in
   (Int.pow k 3 + k) / 2
 
 let sum_line l =
-  let n = get_sum l in
+  let n = magic_constant l in
   abs ((List.fold_left (+) 0 l) - n)
 
 (* Checks all the constraints at once. *)
 
 let is_magic c =
-  let n = get_sum c in
+  let n = magic_constant c in
      check_lines c n
   && check_cols c n
   && check_diags c n
   && all_diff c
 
-(* The distance is the sum of the differences of the sum of each line and n
+(* The cost is the sum of the differences of the sum of each line and n.
    that is |sum line - n|*)
 
-let distance_lines c =
+let cost_lines c =
   let rec sum_lines = function
     | []      -> []
     | l :: ls -> sum_line l :: sum_lines ls in
   List.fold_left (+) 0 (sum_lines c)
 
-let distance_cols c = distance_lines (transpose c)
+let cost_cols c = cost_lines (transpose c)
 
-let distance_diago c = sum_line (get_diago c)
+let cost_diago c = sum_line (get_diago c)
 
-let distance_adiago c = sum_line (get_adiago c)
+let cost_adiago c = sum_line (get_adiago c)
 
-let print c =
-  let print_line l = List.iter (Printf.printf "%d ") l in
-  List.iter (fun l -> print_line l; print_endline "") c
+let cost c = cost_lines c + cost_cols c + cost_diago c + cost_adiago c
 
-let distances c =
-  distance_lines c + distance_cols c + distance_diago c + distance_adiago c
+(* First attempt at neighbours.
+   A neighbour is a matrix that got either a line or a column permuted. *)
 
-(* A neighbour is a matrix that got either a line or a column permuted.
-   TODO This must not be enough since we are looping. *)
+let neighbours c = permutations (transpose c) @ permutations c
 
-let neighbours c =
- let rm x l = List.filter ((<>) x) l in
-  let rec permutations = function
-    | []    -> []
-    | x::[] -> [[x]]
-    | l -> List.fold_left
-        (fun acc x -> acc @ List.map (fun p -> x::p) (permutations (rm x l)))
-        [] l
-  in permutations (transpose c) @ permutations c
+(* Second attempt at neighbours.
+   A neighbour is a matrix on which a line/column has been shifted one spot
+   (cyclic). Rubik's cube way*)
 
-(* Second attempt at neighbours. A neighbour is a matrix on which a line/column
-   has been shifted one spot (cyclic). Rubik's cube way*)
-
-let flipper = fun thelist ->
-  let r = List.rev thelist
-  in (List.hd r) :: (List.rev (List.tl r))
-
-let rec flipper_n c n = match n with
+let rec shift_n c n = match n with
   | 0 -> begin match c with
     | [] -> []
-    | l :: ls -> [(flipper l)] @ ls
+    | l :: ls -> [(shift l)] @ ls
     end
   | _ -> match c with
     | [] -> []
-    | l :: ls -> l :: (flipper_n ls (n-1))
+    | l :: ls -> l :: (shift_n ls (n-1))
 
-let rec flipper_square c =
+let rec shift_square c =
   let n = List.length c in
   let rec fs c n = match n with
     | 0  -> []
-    | _  -> (flipper_n c (n-1)) :: fs c (n-1) in
+    | _  -> (shift_n c (n-1)) :: fs c (n-1) in
   fs c n
 
 let neighbours2 (c: int list list) =
-  (flipper_square c) @ (flipper_square (transpose c))
+    (shift_square c) @ (shift_square (transpose c))
+
+(* Third attempt at neighbours.
+   Generates all the permutations of a square. Overflows.*)
+
+let rec neighbours3 (c: int list list) =
+  let n = List.length c in
+  let c = List.flatten c in
+  let cs = permutations c in
+  let rec split2 cs = match cs with
+  | [] -> []
+  | c :: cs -> split c n :: split2 cs
+  in split2 cs
+
+(* Fourth attempt at neighbours.
+   Swaps two random elements in a square *)
+
+let rec neighbours4 (cs : int list list) =
+  Random.self_init ();
+  let n = List.length cs in
+  let swap u v n = match n with
+    |x when x = u -> v
+    |x when x = v -> u
+    |_ -> n
+  in
+  let list_swap l u v = List.map (swap u v) l in
+  let rec swapn cs m =
+    if m > 0 then
+      let tmp = List.flatten cs in
+      split (list_swap tmp
+               (List.nth tmp (Random.int n))
+               (List.nth tmp (Random.int n))) n
+      :: swapn cs (m-1)
+    else []
+  in swapn cs (n*n)
 
 (* Select the neighbour that is the closest to a solution.
    Chooses at random if multiple candidates. *)
 
-let randomelement cs =
-  let n = Random.int (List.length cs) in
+let random_element cs =
+  let n = Random.self_init (); Random.int (List.length cs) in
   List.nth cs n
+
+(* Gets a minimum cost square. *)
 
 let rec min cs =
   let rec min_carre cs k = match cs with
     | []      -> k
     | c :: cs ->
-      if ((distances c) < (distances k)) then
+      if ((cost c) < (cost k)) then
         min_carre cs c
       else
         min_carre cs k
   in min_carre cs (List.hd cs)
+
+(* Gets all square whose cost are the same as the minimum square. *)
 
 let rec all_min cs =
   let m = min cs in
   let rec all_m cs m = match cs with
   | [] -> []
   | c :: cs ->
-    if (distances c) = (distances m) then
+    if (cost c) = (cost m) then
       c :: (all_m cs m)
     else
       all_m cs m
   in all_m cs m
 
-let mini cs = randomelement (all_min cs)
+(* Picks one square among the minimums. *)
 
-(* solver *)
+let mini cs = random_element (all_min cs)
+
+(* Prints a list of matrices *)
+
+let rec printc = function
+  | [] -> print []
+  | c :: cs ->
+    print c;
+    print_endline "";
+    print_int (cost c);
+    print_endline "";
+    printc cs
+
+(* Solver. *)
 
 let rec solve c =
   if is_magic c then
     print c
   else
-    let n = (neighbours2 c) @ (neighbours c) in
+    let n = (neighbours c) @ (neighbours2 c) @ (neighbours4 c) in
     let m = mini n in
     (*let m = randomelement n in*)
     print m; print_endline "------------";
-    print_int (distances m); print_endline ""; print_endline "------------";
+    print_int (cost m); print_endline ""; print_endline "------------";
     solve m
 
