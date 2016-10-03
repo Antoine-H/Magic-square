@@ -2,3 +2,5 @@ _build/*
 .git/*
 Main.native
 Carre.native
+src/local/*.swp
+src/complete/*.swp
